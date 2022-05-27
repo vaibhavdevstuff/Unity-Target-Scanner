@@ -16,11 +16,11 @@ METHODS :-
 
   Update Method
 
-    RunScanner ()
-    ShowGizmos ()
+    RunScanner();
+    ShowGizmos();
     
   Return Methods (Transform)
 
-    GetTarget ()
-    GetNearestTarget ()
-    GetTargetList ()
+    GetTarget();
+    GetNearestTarget();
+    GetTargetList();
