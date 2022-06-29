@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [System.Serializable]
-public class TargetScanner 
+public class TargetScanner
 {
+    [Tooltip("Center of Scanner")]
+    [SerializeField] Transform transform;
     [Tooltip("Radius within which scanner will always detect Target")]
     [SerializeField] private float alertRadius = 1f;
     [Tooltip("Detection Radius of the Scanner")]
@@ -18,11 +20,11 @@ public class TargetScanner
     [SerializeField] private LayerMask obstacleLayer;
     [SerializeField] private float heightOffset = 0;
     [Tooltip("Max Height Detection Range, Detect both Upward & Downward")]
-    [SerializeField] private float maxHeightDifference = 0;
+    [SerializeField] private float maxHeightDifference = 1f;
 
     private List<Transform> targetList = new List<Transform>();
     private Vector3 eyePos;
-    private Transform transform;
+    RaycastHit hit;
 
     public float ViewRadius { get { return viewRadius; } set { viewRadius = value; } }
     public float ViewAngle { get { return viewAngle; } set { viewAngle = value; } }
@@ -32,10 +34,8 @@ public class TargetScanner
     public float HeightOffset { get { return heightOffset; } set { heightOffset = value; } }
     public float MaxHeightDifference { get { return maxHeightDifference; } set { maxHeightDifference = value; } }
 
-    public void RunScanner(Transform center)
+    private void RunScanner()
     {
-        transform = center;
-
         eyePos = transform.position + Vector3.up * heightOffset;
 
         FindVisibleTargets();
@@ -50,12 +50,13 @@ public class TargetScanner
         Collider[] targetsInViewRadius = Physics.OverlapSphere(transform.position, viewRadius, targetLayer);
         for (int i = 0; i < targetsInViewRadius.Length; i++)
         {
+            Vector3 targetSize = targetsInViewRadius[i].bounds.size;
             Transform target = targetsInViewRadius[i].transform;
 
             Vector3 toPlayer = target.transform.position - eyePos;
 
             if (Mathf.Abs(toPlayer.y + heightOffset) > maxHeightDifference)
-            { 
+            {
                 return;
             }
 
@@ -71,29 +72,71 @@ public class TargetScanner
 
             if (Vector3.Angle(transform.forward, dirToTarget) < viewAngle / 2)
             {
-                float distToTarget = Vector3.Distance(transform.position, target.position);
 
-                if (!Physics.Raycast(transform.position, dirToTarget, distToTarget, obstacleLayer))
+                targetSize.y -= 0.05f;
+
+                float offsetX = targetSize.x / 2;
+                float offsetY = targetSize.y / 2;
+
+                int rayCastIteration = 0;
+
+                for (int j = 0; j < 3; j++)
                 {
-                    if (!targetList.Contains(target))
-                        targetList.Add(target);
+                    for (int k = 0; k < 5; k++)
+                    {
+                        Vector3 targetPosition = target.position + new Vector3(offsetX, offsetY, 0);
+
+                        float distToTarget = Vector3.Distance(transform.position, target.position);
+
+                        dirToTarget = (targetPosition - transform.position).normalized;
+
+                        Debug.DrawLine(transform.position, targetPosition);//----------------------------------------------Debug RayCast
+
+                        if (!Physics.Raycast(transform.position, dirToTarget, out hit, distToTarget, obstacleLayer))
+                        {
+                            if (!targetList.Contains(target))
+                            {
+                                targetList.Add(target);
+                            }
+
+                            goto EndOfLoop;
+                        }
+
+                        offsetY -= targetSize.y / 4;
+                    }
+
+                    rayCastIteration++;
+                    offsetY = targetSize.y / 2;
+                    offsetX -= targetSize.x / 2;
+
                 }
+
+                if (rayCastIteration >= 3 && targetList.Contains(target))
+                {
+                    targetList.Remove(target);
+                }
+
             }
+
+        EndOfLoop:;
         }
 
 
     }
 
+    /// <summary>
+    /// Remove Targets which are not in Range
+    /// </summary>
     private void RemoveTargetFromList()
     {
         if (targetList.Count == 0) return;
 
-        for(int i = 0; i < targetList.Count; i++)
+        for (int i = 0; i < targetList.Count; i++)
         {
             Transform target = targetList[i];
 
             //Null Check---------------------------------------------
-            if (target == null)
+            if (target == null || !target.gameObject.activeInHierarchy)
             {
                 targetList.Remove(target);
                 continue;
@@ -123,16 +166,7 @@ public class TargetScanner
             {
                 targetList.Remove(target);
             }
-            else
-            {
-                //Obstacle Check---------------------------------------------
-                float distToTarget = Vector3.Distance(transform.position, target.position);
-
-                if (Physics.Raycast(transform.position, dirToTarget, distToTarget, obstacleLayer))
-                {
-                    targetList.Remove(target); continue;
-                }
-            }
+            
 
         }
 
@@ -141,8 +175,11 @@ public class TargetScanner
     /// <summary>
     /// Return the first detected target by scanner
     /// </summary>
+    /// <returns>(List of Transforms) Targets</returns>
     public Transform GetTarget()
     {
+        RunScanner();
+
         if (targetList.Count == 0) return null;
 
         return targetList[0];
@@ -151,22 +188,25 @@ public class TargetScanner
     /// <summary>
     /// Return the nearest target among the detected target by scanner
     /// </summary>
+    /// <returns>(Transform) Closest Target</returns>
     public Transform GetNearestTarget()
     {
+        RunScanner();
+
         if (targetList.Count == 0) return null;
 
         Transform _nearestTargetPos;
 
         _nearestTargetPos = targetList[0];
 
-        for(int i = 0; i < targetList.Count; i++)
+        for (int i = 0; i < targetList.Count; i++)
         {
-            if(Vector3.Distance(transform.position, targetList[i].position) <
+            if (Vector3.Distance(transform.position, targetList[i].position) <
                 Vector3.Distance(transform.position, _nearestTargetPos.position))
             {
                 _nearestTargetPos = targetList[i];
             }
-                
+
         }
 
         return _nearestTargetPos;
@@ -177,51 +217,53 @@ public class TargetScanner
     /// </summary>
     public List<Transform> GetTargetList()
     {
+        RunScanner();
+
         if (targetList.Count == 0) return null;
 
         return targetList;
     }
 
-
-
-
-
-
-
-    public void ShowGizmos(Transform _transform)
+    /// <summary>
+    /// Show Gizmos of scanner
+    /// </summary>
+    public void ShowGizmos()
     {
+        if (transform == null) return;
 
+        Gizmos.color = Color.red;
+
+        if (hit.collider != null) Gizmos.DrawSphere(hit.point, 0.15f);
 
         //Eye Location
         Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(_transform.position + Vector3.up * heightOffset, 0.2f);
+        Gizmos.DrawWireSphere(transform.position + Vector3.up * heightOffset, 0.2f);
 
         //Height Check Area
         UnityEditor.Handles.color = Color.yellow;
-        UnityEditor.Handles.DrawWireDisc(_transform.position + Vector3.up * maxHeightDifference, Vector3.up, viewRadius);
-        UnityEditor.Handles.DrawWireDisc(_transform.position + Vector3.down * maxHeightDifference, Vector3.up, viewRadius);
+        UnityEditor.Handles.DrawWireDisc(transform.position + Vector3.up * maxHeightDifference, Vector3.up, viewRadius);
+        UnityEditor.Handles.DrawWireDisc(transform.position + Vector3.down * maxHeightDifference, Vector3.up, viewRadius);
 
         //Always Detect Radius
         Color r = new Color(0.5f, 0f, 0f, 0.5f);
         UnityEditor.Handles.color = r;
-        UnityEditor.Handles.DrawSolidArc(_transform.position, Vector3.up, Vector3.forward, 360f, alertRadius);
+        UnityEditor.Handles.DrawSolidArc(transform.position, Vector3.up, Vector3.forward, 360f, alertRadius);
 
         //View Radius
         UnityEditor.Handles.color = Color.white;
-        //UnityEditor.Handles.DrawWireArc(_transform.position, Vector3.up, Vector3.forward, 360f, viewRadius);
-        UnityEditor.Handles.DrawWireDisc(_transform.position, Vector3.up, viewRadius);
+        UnityEditor.Handles.DrawWireDisc(transform.position, Vector3.up, viewRadius);
 
         //View Angle
         Color b = new Color(0, 0.5f, 0.7f, 0.2f);
         UnityEditor.Handles.color = b;
-        Vector3 rotatedForward = Quaternion.Euler(0, -viewAngle * 0.5f, 0) * _transform.forward;
-        UnityEditor.Handles.DrawSolidArc(_transform.position, Vector3.up, rotatedForward, viewAngle, viewRadius);
+        Vector3 rotatedForward = Quaternion.Euler(0, -viewAngle * 0.5f, 0) * transform.forward;
+        UnityEditor.Handles.DrawSolidArc(transform.position, Vector3.up, rotatedForward, viewAngle, viewRadius);
 
         //To Target Line
         Gizmos.color = Color.red;
         foreach (Transform t in targetList)
         {
-            Gizmos.DrawLine(_transform.position, t.position);
+            Gizmos.DrawLine(transform.position, t.position);
             Gizmos.DrawCube(t.position, new Vector3(0.3f, 0.3f, 0.3f));
         }
     }
