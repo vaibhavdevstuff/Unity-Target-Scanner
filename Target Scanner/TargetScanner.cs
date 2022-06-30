@@ -229,6 +229,9 @@ public class TargetScanner
     /// </summary>
     public void ShowGizmos()
     {
+
+#if UNITY_EDITOR
+
         if (transform == null) return;
 
         Gizmos.color = Color.red;
@@ -266,6 +269,10 @@ public class TargetScanner
             Gizmos.DrawLine(transform.position, t.position);
             Gizmos.DrawCube(t.position, new Vector3(0.3f, 0.3f, 0.3f));
         }
+
+#endif
+
+
     }
 
 
