@@ -16,7 +16,6 @@ METHODS :-
 
   Update Method
 
-    RunScanner();
     ShowGizmos();
     
   Return Methods (Transform)
