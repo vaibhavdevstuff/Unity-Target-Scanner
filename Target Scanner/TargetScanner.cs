@@ -6,7 +6,7 @@ using UnityEngine;
 public class TargetScanner
 {
     [Tooltip("Center of Scanner")]
-    [SerializeField] bool ShowGizmos;
+    [SerializeField] bool ScannerGizmos;
     [Tooltip("Center of Scanner")]
     [SerializeField] Transform transform;
     [Tooltip("Radius within which scanner will always detect Target")]
@@ -234,7 +234,7 @@ public class TargetScanner
 
 #if UNITY_EDITOR
 
-        if (!ShowGizmos || transform == null) return;
+        if (!ScannerGizmos || transform == null) return;
 
         Gizmos.color = Color.red;
 
