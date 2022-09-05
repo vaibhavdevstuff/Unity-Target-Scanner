@@ -16,10 +16,10 @@ METHODS :-
 
   Update Method
 
-    ShowGizmos();
+    'ShowGizmos()'
     
   Return Methods (Transform)
 
-    GetTarget();
-    GetNearestTarget();
-    GetTargetList();
+    `GetTarget()`
+    `GetNearestTarget()`
+    `GetTargetList()`
