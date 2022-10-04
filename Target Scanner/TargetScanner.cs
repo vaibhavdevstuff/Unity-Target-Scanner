@@ -38,6 +38,12 @@ public class TargetScanner
 
     private void RunScanner()
     {
+        if(!transform)
+        {
+            Debug.LogError("transform(Center of Scanner) not assigned");
+            return;
+        }
+
         eyePos = transform.position + Vector3.up * heightOffset;
 
         FindVisibleTargets();
@@ -72,19 +78,19 @@ public class TargetScanner
 
             Vector3 dirToTarget = (target.position - transform.position).normalized;
 
+            //Detect if any Obstacle come in path
             if (Vector3.Angle(transform.forward, dirToTarget) < viewAngle / 2)
             {
-
-                targetSize.y -= 0.05f;
+                targetSize.y -= 0.05f; //---------Manual offset in size so that raycast won't go above the mesh
 
                 float offsetX = targetSize.x / 2;
                 float offsetY = targetSize.y / 2;
 
                 int rayCastIteration = 0;
 
-                for (int j = 0; j < 3; j++)
+                for (int j = 0; j < 3; j++) //----------Row of RayCast
                 {
-                    for (int k = 0; k < 5; k++)
+                    for (int k = 0; k < 5; k++) //----------Column of RayCast
                     {
                         Vector3 targetPosition = target.position + new Vector3(offsetX, offsetY, 0);
 
@@ -92,7 +98,9 @@ public class TargetScanner
 
                         dirToTarget = (targetPosition - transform.position).normalized;
 
-                        Debug.DrawLine(transform.position, targetPosition);//----------------------------------------------Debug RayCast
+#if UNITY_EDITOR
+                        Debug.DrawLine(transform.position, targetPosition); //----------Debug RayCast
+#endif
 
                         if (!Physics.Raycast(transform.position, dirToTarget, out hit, distToTarget, obstacleLayer))
                         {
@@ -101,7 +109,7 @@ public class TargetScanner
                                 targetList.Add(target);
                             }
 
-                            goto EndOfLoop;
+                            goto EndOfLoop; //---------Target is detected no need to go further, so jump out of the Main loop
                         }
 
                         offsetY -= targetSize.y / 4;
@@ -138,7 +146,13 @@ public class TargetScanner
             Transform target = targetList[i];
 
             //Null Check---------------------------------------------
-            if (target == null || !target.gameObject.activeInHierarchy)
+            if(target == null)
+            {
+                targetList.RemoveAt(i);
+            }
+
+            //not active in hierarchy
+            if (!target.gameObject.activeInHierarchy)
             {
                 targetList.Remove(target);
                 continue;
@@ -175,9 +189,8 @@ public class TargetScanner
     }
 
     /// <summary>
-    /// Return the first detected target by scanner
+    /// Give the first detected target by scanner
     /// </summary>
-    /// <returns>(List of Transforms) Targets</returns>
     public Transform GetTarget()
     {
         RunScanner();
@@ -188,9 +201,8 @@ public class TargetScanner
     }
 
     /// <summary>
-    /// Return the nearest target among the detected target by scanner
+    /// Give the nearest target among all detected targets by scanner
     /// </summary>
-    /// <returns>(Transform) Closest Target</returns>
     public Transform GetNearestTarget()
     {
         RunScanner();
@@ -215,7 +227,7 @@ public class TargetScanner
     }
 
     /// <summary>
-    /// Return the List of all target detected by scanner
+    /// Give the List of targets detected by scanner
     /// </summary>
     public List<Transform> GetTargetList()
     {
