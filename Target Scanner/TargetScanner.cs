@@ -26,7 +26,8 @@ public class TargetScanner
 
     private List<Transform> targetList = new List<Transform>();
     private Vector3 eyePos;
-    RaycastHit hit;
+    private RaycastHit hit;
+    private Transform customtarget;
 
     public float ViewRadius { get { return viewRadius; } set { viewRadius = value; } }
     public float ViewAngle { get { return viewAngle; } set { viewAngle = value; } }
@@ -48,6 +49,7 @@ public class TargetScanner
 
         FindVisibleTargets();
         RemoveTargetFromList();
+        AddCustomtargetToList();
     }
 
     /// <summary>
@@ -185,6 +187,35 @@ public class TargetScanner
             
 
         }
+
+    }
+
+    /// <summary>
+    /// Add Custom target to the target List
+    /// </summary>
+    private void AddCustomtargetToList()
+    {
+        if (customtarget != null)
+        {
+            targetList.Add(customtarget);
+            customtarget = null;
+        }
+    }
+
+    /// <summary>
+    /// Add Target to Scanner List (will be remove after one iteration if not fullfill scanner detection data)
+    /// </summary>
+    /// <param name="CustomTarget"></param>
+    /// <returns>True: If not already present in Target List (will added in list after)</returns>
+    public bool AddTarget(Transform CustomTarget)
+    {
+        if (!targetList.Contains(CustomTarget))
+        {
+            customtarget = CustomTarget;
+            return true;
+        }
+        else
+            return false;
 
     }
 
